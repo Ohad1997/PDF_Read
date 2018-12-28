@@ -1,0 +1,116 @@
+'VBA based pdf Reader, Ohad Baehr, Excel 2010, Windows 10
+
+Option Explicit
+
+Private Declare Function FindWindow Lib "user32.dll" Alias "FindWindowA" _
+(ByVal lpClassName As String, ByVal lpWindowTitle As String) As Long
+
+Private Declare Function FindWindowEx Lib "user32.dll" Alias "FindWindowExA" _
+(ByVal hWnd1 As Long, ByVal hWnd2 As Long, ByVal lpsz1 As String, ByVal lpsz2 As String) As Long
+
+Private Declare Function SendMessage Lib "user32.dll" Alias "SendMessageA" _
+(ByVal hWnd As Long, ByVal wMsg As Long, ByVal wParam As Long, lParam As Long) As Long
+
+Private Declare Function ShowWindow Lib "user32.dll" (ByVal hWnd As LongPtr, _
+ByVal nCmdShow As Long) As Long
+
+Private Declare Function SetWindowPos Lib "user32.dll" (ByVal hWnd As Long, _
+ByVal hWndInsertAfter As Long, ByVal x As Long, ByVal y As Long, _
+ByVal cx As Long, ByVal cy As Long, ByVal wFlags As Long) As Long
+
+Private Declare Function PostMessage Lib "user32" Alias "PostMessageA" _
+    (ByVal hWnd As Long, ByVal wMsg As Long, ByVal wParam As Long, ByVal lParam As Long) As Long
+      
+#If VBA7 Then
+
+Public Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As LongPtr)
+
+#Else
+
+Public Declare Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As LongPtr)
+
+#End If
+
+Private Declare Function GetClipboardOwner Lib "user32.dll" () As Long
+Private Declare Function OpenClipboard Lib "user32.dll" (ByVal hWnd As Long) As Long
+Private Declare Function EmptyClipboard Lib "user32.dll" () As Long
+Private Declare Function CloseClipboard Lib "user32" () As Long
+Private Declare Function CountClipboardFormats Lib "user32.dll" () As Long
+
+Sub ClearClipboard()
+    Dim hWnd As Long
+    Dim retVal As Long
+        hWnd = GetClipboardOwner()
+        retVal = OpenClipboard(hWnd)
+        retVal = EmptyClipboard()
+        retVal = CloseClipboard()
+End Sub
+
+Public Sub CopyPDFText()
+    Dim x As Variant
+    Dim Wks As Worksheet
+    Dim intChoice As Integer
+    Dim pathAndFileName As String
+    
+    Const HWND_TOPMOST      As Long = -1
+    Const HWND_TOP          As Long = 0
+    Const SWP_NOSIZE        As Long = &H1
+    Const SWP_NOMOVE        As Long = &H2
+    Const SWP_SHOWWINDOW    As Long = &H40
+    
+    Const WM_KEYDOWN = &H100
+    Const VK_CONTROL = &H11
+    Const SW_HIDE = 0
+    Const SW_NORMAL = 1
+    Const SW_MAXIMIZE = 3
+    Const SW_MINIMIZE = 6
+    Const SW_RESTORE = 9
+    Const WM_CLOSE = &H10
+    
+        Application.FileDialog(msoFileDialogOpen).InitialFileName = ActiveWorkbook.Path
+        Application.FileDialog(msoFileDialogOpen).AllowMultiSelect = False
+    
+        intChoice = Application.FileDialog(msoFileDialogOpen).Show
+        If intChoice <> 0 Then
+        Application.ScreenUpdating = False
+        
+            pathAndFileName = Application.FileDialog(msoFileDialogOpen).SelectedItems(1)
+            
+            ActiveWorkbook.FollowHyperlink Address:=pathAndFileName, NewWindow:=True
+            
+            Dim hWnd As Long
+            Dim hWndClose As Long
+            Dim retVal As Long
+            
+            
+            Call ClearClipboard
+            
+            'change to desired location
+            Range("A1").Select
+            
+            Application.ScreenUpdating = False
+            
+            Set Wks = ThisWorkbook.ActiveSheet
+            
+            
+            Do While hWnd = 0: hWnd = FindWindow("AcrobatSDIWindow", vbNullString): Loop
+            
+            retVal = SetWindowPos(hWnd, HWND_TOP, 0, 0, 0, 0, SWP_SHOWWINDOW Or SWP_NOMOVE Or SWP_NOSIZE)
+            
+            retVal = ShowWindow(hWnd, SW_RESTORE)
+            
+            Call CopyAll
+            While CountClipboardFormats = 0: DoEvents: Wend
+            
+            hWndClose = FindWindowEx(0, hWndClose, "AcrobatSDIWindow", vbNullString)
+            retVal = ShowWindow(hWnd, SW_HIDE)
+            SendMessage hWndClose, WM_CLOSE, 0, 0
+            
+
+            Wks.Paste
+            
+            'put the code to format the data here
+            
+        Application.ScreenUpdating = True
+        End If
+End Sub

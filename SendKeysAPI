@@ -1,0 +1,133 @@
+Private Const KEYEVENTF_KEYDOWN     As Long = &H0
+Private Const KEYEVENTF_EXTENDEDKEY As Long = &H1
+Private Const KEYEVENTF_KEYUP       As Long = &H2
+Private Const KEYEVENTF_UNICODE     As Long = &H4
+
+Private Const MAPVK_VK_TO_VSC       As Long = 0
+Private Const MAPVK_VSC_TO_VK       As Long = 1
+Private Const MAPVK_VK_TO_CHAR      As Long = 2
+Private Const MAPVK_VSC_TO_VK_EX    As Long = 3
+
+Private Const VK_LBUTTON            As Byte = &H1
+Private Const VK_RBUTTON            As Byte = &H2
+Private Const VK_MBUTTON            As Byte = &H4
+Private Const VK_BACKSPACE          As Byte = &H8
+Private Const VK_TAB                As Byte = &H9
+Private Const VK_ENTER              As Byte = &HD
+Private Const VK_SHIFT              As Byte = &H10
+Private Const VK_CONTROL            As Byte = &H11
+Private Const VK_ALT                As Byte = &H12
+Private Const VK_CAPITAL            As Byte = &H14
+Private Const VK_ESCAPE             As Byte = &H1B
+Private Const VK_SPACEBAR           As Byte = &H20
+Private Const VK_PAGEUP             As Byte = &H21
+Private Const VK_PAGEDOWN           As Byte = &H22
+Private Const VK_END                As Byte = &H23
+Private Const VK_HOME               As Byte = &H24
+Private Const VK_LEFTARROW          As Byte = &H25
+Private Const VK_UPARROW            As Byte = &H26
+Private Const VK_RIGHTARROW         As Byte = &H27
+Private Const VK_DOWNARROW          As Byte = &H28
+Private Const VK_SNAPSHOT           As Byte = &H2C
+Private Const VK_LWIN               As Byte = &H5B
+Private Const VK_RWIN               As Byte = &H5C
+Private Const VK_F1                 As Byte = &H70
+Private Const VK_F2                 As Byte = &H71
+Private Const VK_F3                 As Byte = &H72
+Private Const VK_F4                 As Byte = &H73
+Private Const VK_F5                 As Byte = &H74
+Private Const VK_F6                 As Byte = &H75
+Private Const VK_F7                 As Byte = &H76
+Private Const VK_F8                 As Byte = &H77
+Private Const VK_F9                 As Byte = &H78
+Private Const VK_F10                As Byte = &H79
+Private Const VK_F11                As Byte = &H7A
+Private Const VK_F12                As Byte = &H7B
+Private Const VK_NUMLOCK            As Byte = &H90
+Private Const VK_SCROLL             As Byte = &H91
+Private Const VK_LSHIFT             As Byte = &HA0
+Private Const VK_RSHIFT             As Byte = &HA1
+Private Const VK_LCONTROL           As Byte = &HA2
+Private Const VK_RCONTROL           As Byte = &HA3
+Private Const VK_LMENU              As Byte = &HA4
+Private Const VK_RMENU              As Byte = &HA5
+
+Const INPUT_MOUSE = 0
+Const INPUT_KEYBOARD = 1
+Const INPUT_HARDWARE = 2
+
+Private Type MOUSEINPUT
+    dx          As Long
+    dy          As Long
+    mouseData   As Long
+    dwFlags     As Long
+    time        As Long
+    dwExtraInfo As Long
+End Type
+
+Private Type KEYBDINPUT
+    wVk         As Integer
+    wScan       As Integer
+    dwFlags     As Long
+    time        As Long
+    dwExtraInfo As Long
+End Type
+
+Private Type HARDWAREINPUT
+    uMsg        As Long
+    wParamL     As Integer
+    wParamH     As Integer
+End Type
+
+Private Type GENERALINPUT
+    dwType      As Long
+    xi(0 To 23) As Byte
+End Type
+
+Private Declare Function MapVirtualKey Lib "user32.dll" Alias "MapVirtualKeyA" (ByVal uCode As Long, ByVal uMapType As Long) As Long
+Private Declare Function SendInput Lib "user32.dll" (ByVal nInputs As Long, ByRef pInputs As GENERALINPUT, ByVal cbSize As Long) As Long
+Private Declare Sub CopyMemory Lib "kernel32.dll" Alias "RtlMoveMemory" (ByRef pDst As Any, ByRef pSrc As Any, ByVal byteLen As Long)
+
+Sub SendKeysAPI(ParamArray vkKeyCodes() As Variant)
+    Dim char            As String
+    Dim GenInput()      As GENERALINPUT
+    Dim KeyInput        As KEYBDINPUT
+    Dim N               As Long
+    
+        If IsMissing(vkKeyCodes) Then Exit Sub
+        
+        ReDim GenInput(0 To UBound(vkKeyCodes))
+        
+        For N = 0 To UBound(vkKeyCodes)
+            If VarType(vkKeyCodes(N)) = vbString Then
+                KeyInput.wVk = Asc(vkKeyCodes(N))
+            Else
+                KeyInput.wVk = vkKeyCodes(N)
+            End If
+            KeyInput.dwFlags = KEYEVENTF_KEYDOWN
+            
+            GenInput(N).dwType = INPUT_KEYBOARD
+            CopyMemory GenInput(N).xi(0), KeyInput, Len(KeyInput)
+        Next N
+        
+        Call SendInput(UBound(GenInput) + 1, GenInput(0), Len(GenInput(0)))
+        
+        For N = 0 To UBound(vkKeyCodes)
+            If VarType(vkKeyCodes(N)) = vbString Then
+                KeyInput.wVk = Asc(vkKeyCodes(N))
+            Else
+                KeyInput.wVk = vkKeyCodes(N)
+            End If
+            KeyInput.dwFlags = KEYEVENTF_KEYUP
+            
+            GenInput(N).dwType = INPUT_KEYBOARD
+            CopyMemory GenInput(N).xi(0), KeyInput, Len(KeyInput)
+        Next N
+        
+        Call SendInput(UBound(GenInput) + 1, GenInput(0), Len(GenInput(0)))
+End Sub
+
+Sub CopyAll()
+    Call SendKeysAPI(VK_CONTROL, "A")
+    Call SendKeysAPI(VK_CONTROL, "C")
+End Sub
